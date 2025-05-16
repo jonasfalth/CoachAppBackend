@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>coach-backend</name>
+    </assembly>
+    <members>
+        <member name="T:CoachBackend.Controllers.TeamController">
+            <summary>
+            Controller för att hantera team-relaterade operationer
+            </summary>
+        </member>
+        <member name="M:CoachBackend.Controllers.TeamController.GetTeams">
+            <summary>
+            Hämtar alla team som den inloggade användaren tillhör
+            </summary>
+            <returns>En lista med team</returns>
+        </member>
+    </members>
+</doc>
