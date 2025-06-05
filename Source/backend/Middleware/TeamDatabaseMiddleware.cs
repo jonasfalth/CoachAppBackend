@@ -1,63 +1,67 @@
 using Microsoft.AspNetCore.Http;
 using System.Security.Claims;
 using CoachBackend.Services;
+using System.Data;
+using Microsoft.Data.Sqlite;
+using CoachBackend.Authentication;
 
 namespace CoachBackend.Middleware;
 
 public class TeamDatabaseMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly TeamDatabaseService _teamDatabaseService;
+    private readonly ILogger<TeamDatabaseMiddleware> _logger;
 
-    public TeamDatabaseMiddleware(RequestDelegate next, TeamDatabaseService teamDatabaseService)
+    public TeamDatabaseMiddleware(
+        RequestDelegate next,
+        ILogger<TeamDatabaseMiddleware> logger)
     {
         _next = next;
-        _teamDatabaseService = teamDatabaseService;
+        _logger = logger;
     }
 
     public async Task InvokeAsync(HttpContext context)
     {
-        // Skippa middleware för /api/team och /api/Auth endpoints
-        if (context.Request.Path.StartsWithSegments("/api/team", StringComparison.OrdinalIgnoreCase) || 
-            context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            await _next(context);
-            return;
+            var teamId = context.User.FindFirst("TeamId")?.Value;
+            if (!string.IsNullOrEmpty(teamId))
+            {
+                _logger.LogInformation("Hittade TeamId i token: {TeamId}", teamId);
+                
+                // Hämta TeamService för att slå upp team-information
+                var teamService = context.RequestServices.GetRequiredService<TeamService>();
+                var team = await teamService.GetTeamByIdAsync(int.Parse(teamId));
+                
+                if (team == null)
+                {
+                    _logger.LogWarning("Team med ID {TeamId} hittades inte", teamId);
+                }
+                else
+                {
+                    _logger.LogInformation("Team hittat: {TeamName} med databas: {DatabaseName}", team.Name, team.DatabaseName);
+                    
+                    // Hämta TeamDatabaseService från service provider
+                    var teamDatabaseService = context.RequestServices.GetRequiredService<TeamDatabaseService>();
+                    
+                    // Använd teamets faktiska DatabaseName
+                    var teamConnection = await teamDatabaseService.GetTeamDatabaseConnectionAsync(team.DatabaseName);
+                    
+                    // Spara anslutningen i HttpContext för användning i controllers
+                    context.Items["TeamDatabaseConnection"] = teamConnection;
+                    
+                    _logger.LogInformation("Team databasanslutning konfigurerad för {TeamName} (databas: {DatabaseName})", team.Name, team.DatabaseName);
+                }
+            }
+            else
+            {
+                _logger.LogInformation("Inget TeamId hittades i token");
+            }
         }
-
-        // Skippa middleware för /api/Auth endpoints
-        if (context.Request.Path.StartsWithSegments("/api/auth", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex)
         {
-            await _next(context);
-            return;
+            _logger.LogError(ex, "Fel vid konfigurering av team databasanslutning");
         }
-
-        // Om man inte är autentiserad, returnera 403
-        if (!context.User.Identity?.IsAuthenticated ?? true)
-        {
-            context.Response.StatusCode = 403;
-            await context.Response.WriteAsync("Not authenticated");
-            return;
-        }
-
-        var teamIdClaim = context.User.FindFirst("TeamId");
-        if (teamIdClaim == null || !int.TryParse(teamIdClaim.Value, out int teamId))
-        {
-            context.Response.StatusCode = 403;
-            await context.Response.WriteAsync("No team selected");
-            return;
-        }
-
-        var databaseName = await _teamDatabaseService.GetDatabaseNameForTeamAsync(teamId);
-        if (string.IsNullOrEmpty(databaseName))
-        {
-            context.Response.StatusCode = 400;
-            await context.Response.WriteAsync("Invalid team");
-            return;
-        }
-
-        // Sätt database name i context items så att repositories kan använda det
-        context.Items["DatabaseName"] = databaseName;
 
         await _next(context);
     }

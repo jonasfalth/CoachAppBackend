@@ -10,6 +10,7 @@ public class TeamRepository : BaseRepository
 
     public async Task<List<Team>> GetAllTeamsAsync()
     {
+        EnsureConnectionOpen();
         var teams = new List<Team>();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
@@ -82,6 +83,7 @@ public class TeamRepository : BaseRepository
 
     public async Task<Team?> GetTeamByIdAsync(int id)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = "SELECT Id, Name, DatabaseName, CreatedAt, LastUpdated FROM Teams WHERE Id = @Id";
@@ -132,6 +134,7 @@ public class TeamRepository : BaseRepository
 
     public async Task<Team> CreateTeamAsync(Team team)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -151,6 +154,7 @@ public class TeamRepository : BaseRepository
 
     public async Task<Team> UpdateTeamAsync(Team team)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -172,6 +176,7 @@ public class TeamRepository : BaseRepository
 
     public async Task DeleteTeamAsync(int id)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = "DELETE FROM Teams WHERE Id = @Id";

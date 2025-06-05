@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using CoachBackend.Models;
 using CoachBackend.Services;
+using CoachBackend.Repositories;
+using System.Data;
 
 namespace CoachBackend.Controllers;
 
@@ -11,24 +13,47 @@ namespace CoachBackend.Controllers;
 [Route("api/[controller]")]
 public class MatchesController : ControllerBase
 {
-    private readonly MatchService _matchService;
+    private readonly ILogger<MatchesController> _logger;
 
-    public MatchesController(MatchService matchService)
+    public MatchesController(ILogger<MatchesController> logger)
     {
-        _matchService = matchService;
+        _logger = logger;
+    }
+
+    private MatchService GetMatchService()
+    {
+        // Hämta team-specifik databasanslutning från middleware
+        var teamConnection = HttpContext.Items["TeamDatabaseConnection"] as IDbConnection;
+        
+        if (teamConnection == null)
+        {
+            _logger.LogWarning("Team-databasanslutning hittades inte, använder global anslutning");
+            // Fallback till global anslutning
+            var globalConnection = HttpContext.RequestServices.GetRequiredService<IDbConnection>();
+            var globalMatchRepo = new MatchRepository(globalConnection);
+            return new MatchService(globalMatchRepo);
+        }
+
+        // Använd team-specifik anslutning
+        var matchRepository = new MatchRepository(teamConnection);
+        return new MatchService(matchRepository);
     }
 
     [HttpGet]
     public async Task<ActionResult<List<Match>>> GetAllMatches()
     {
-        var matches = await _matchService.GetAllMatchesAsync();
+        var matchService = GetMatchService();
+        var matches = await matchService.GetAllMatchesAsync();
+        
+        _logger.LogInformation("Hämtade {Count} matcher från team-databas", matches.Count);
         return Ok(matches);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Match>> GetMatchById(int id)
     {
-        var match = await _matchService.GetMatchByIdAsync(id);
+        var matchService = GetMatchService();
+        var match = await matchService.GetMatchByIdAsync(id);
         if (match == null)
         {
             return NotFound();
@@ -42,7 +67,10 @@ public class MatchesController : ControllerBase
     {
         try
         {
-            var createdMatch = await _matchService.CreateMatchAsync(match);
+            var matchService = GetMatchService();
+            var createdMatch = await matchService.CreateMatchAsync(match);
+            
+            _logger.LogInformation("Skapade match {Title} i team-databas", createdMatch.Opponent);
             return CreatedAtAction(nameof(GetMatchById), new { id = createdMatch.Id }, createdMatch);
         }
         catch (ArgumentException ex)
@@ -61,7 +89,10 @@ public class MatchesController : ControllerBase
 
         try
         {
-            var updatedMatch = await _matchService.UpdateMatchAsync(match);
+            var matchService = GetMatchService();
+            var updatedMatch = await matchService.UpdateMatchAsync(match);
+            
+            _logger.LogInformation("Uppdaterade match {Title} i team-databas", updatedMatch.Opponent);
             return Ok(updatedMatch);
         }
         catch (ArgumentException ex)
@@ -75,7 +106,10 @@ public class MatchesController : ControllerBase
     {
         try
         {
-            await _matchService.DeleteMatchAsync(id);
+            var matchService = GetMatchService();
+            await matchService.DeleteMatchAsync(id);
+            
+            _logger.LogInformation("Tog bort match med ID {Id} från team-databas", id);
             return NoContent();
         }
         catch (ArgumentException ex)

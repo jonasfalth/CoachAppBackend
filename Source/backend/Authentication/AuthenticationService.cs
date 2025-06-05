@@ -4,6 +4,8 @@ using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using CoachBackend.Models;
+using CoachBackend.Repositories;
+using BCrypt.Net;
 
 namespace CoachBackend.Authentication;
 

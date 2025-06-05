@@ -131,7 +131,7 @@ public class AuthController : ControllerBase
         var isInTeam = await _teamService.IsUserInTeamAsync(userId, request.TeamId);
         if (!isInTeam)
         {
-            return Forbid("Användaren tillhör inte detta team");
+            return StatusCode(403, new { message = "Användaren tillhör inte detta team" });
         }
 
         var team = await _teamService.GetTeamByIdAsync(request.TeamId);

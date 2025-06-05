@@ -14,20 +14,46 @@ using CoachBackend.Authentication;
 using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Options;
 using CoachBackend.Middleware;
+using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
+using Serilog;
+using Serilog.Events;
+using CoachBackend;
+
+Console.WriteLine("Starting application...");
 
 var builder = WebApplication.CreateBuilder(args);
 
+Console.WriteLine("Configuring Serilog...");
+// Konfigurera Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+
+Console.WriteLine("Adding services...");
 // Lägg till services till containern
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    });
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Coach API", Version = "v1" });
     
-    // Lägg till XML-kommentarer
+    // Lägg till XML-kommentarer om de finns
     var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
     var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-    c.IncludeXmlComments(xmlPath);
+    if (File.Exists(xmlPath))
+    {
+        c.IncludeXmlComments(xmlPath);
+    }
     
     // Lägg till JWT-autentisering i Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
@@ -56,6 +82,12 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Lägg till JWT-autentisering
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+if (jwtSettings == null || string.IsNullOrEmpty(jwtSettings.SecretKey))
+{
+    throw new InvalidOperationException("JwtSettings:SecretKey is not configured");
+}
+
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -66,16 +98,15 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuerSigningKey = true,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"] ?? throw new InvalidOperationException("JwtSettings:SecretKey is not configured"))),
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
         ValidateIssuer = true,
-        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidIssuer = jwtSettings.Issuer,
         ValidateAudience = true,
-        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        ValidAudience = jwtSettings.Audience,
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
 
-    // Konfigurera för att hämta token från cookie
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -96,50 +127,73 @@ builder.Services.AddSingleton(sp => sp.GetRequiredService<IOptions<JwtSettings>>
 // Registrera AuthenticationService
 builder.Services.AddScoped<IAuthenticationService, AuthenticationService>();
 
-// Konfigurera UserDb
-var userDbConnection = new SqliteConnection("Data Source=UserDb.sqlite");
-userDbConnection.Open();
-UserDatabaseInit.InitializeUserDatabase(userDbConnection);
+// Konfigurera databasanslutningar med dependency injection
+var userDbPath = builder.Configuration.GetValue<string>("Database:UserDbPath") ?? "UserDb.db";
+var coachAppDbPath = builder.Configuration.GetValue<string>("Database:CoachAppDbPath") ?? "CoachAppDb.db";
 
-// Registrera repositories och services för UserDb
-builder.Services.AddScoped<UserRepository>(_ => new UserRepository(userDbConnection));
-builder.Services.AddScoped<TeamRepository>(_ => new TeamRepository(userDbConnection));
-builder.Services.AddScoped<UserTeamRepository>(_ => new UserTeamRepository(userDbConnection));
+Console.WriteLine($"Använder användardatabas: {userDbPath}");
+Console.WriteLine($"Använder coach-app databas: {coachAppDbPath}");
+
+// Skapa och initialisera användardatabasen
+var userConnection = new SqliteConnection($"Data Source={userDbPath}");
+Console.WriteLine("Öppnar användardatabasanslutning...");
+userConnection.Open();
+Console.WriteLine("Användardatabasanslutning öppnad.");
+
+Console.WriteLine("Startar initialisering av användardatabasen...");
+UserDatabaseInit.InitializeUserDatabase(userConnection);
+Console.WriteLine("Användardatabasen initialiserad.");
+
+// Registrera användardatabasanslutningen som singleton
+builder.Services.AddSingleton<SqliteConnection>(userConnection);
+builder.Services.AddSingleton<IDbConnection>(userConnection);
+
+// Skapa och öppna coach-app databasanslutningen
+var coachAppConnection = new SqliteConnection($"Data Source={coachAppDbPath}");
+Console.WriteLine("Öppnar coach-app databasanslutning...");
+coachAppConnection.Open();
+Console.WriteLine("Coach-app databasanslutning öppnad.");
+
+// Registrera coach-app databasanslutningen som singleton
+builder.Services.AddSingleton<SqliteConnection>(coachAppConnection);
+builder.Services.AddSingleton<IDbConnection>(coachAppConnection);
+
+// Registrera repositories och services med rätt databasanslutning
+builder.Services.AddScoped<UserRepository>(sp => new UserRepository(userConnection));
+builder.Services.AddScoped<TeamRepository>(sp => new TeamRepository(userConnection));
+builder.Services.AddScoped<UserTeamRepository>(sp => new UserTeamRepository(userConnection));
+builder.Services.AddScoped<PlayerRepository>(sp => new PlayerRepository(coachAppConnection));
+builder.Services.AddScoped<MatchRepository>(sp => new MatchRepository(coachAppConnection));
+builder.Services.AddScoped<PositionRepository>(sp => new PositionRepository(coachAppConnection));
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<TeamService>();
-
-// Konfigurera CoachAppDb
-var coachAppDbConnection = new SqliteConnection("Data Source=CoachAppDb.db");
-coachAppDbConnection.Open();
-DatabaseInit.InitializeDatabase(coachAppDbConnection);
-
-// Registrera repositories och services för CoachAppDb
-builder.Services.AddScoped<PlayerRepository>(_ => new PlayerRepository(coachAppDbConnection));
-builder.Services.AddScoped<MatchRepository>(_ => new MatchRepository(coachAppDbConnection));
-builder.Services.AddScoped<PositionRepository>(_ => new PositionRepository(coachAppDbConnection));
-// Tillfälligt kommenterat tills Gameplay-klasserna fungerar
-//builder.Services.AddScoped<GameplayRepository>(_ => new GameplayRepository(coachAppDbConnection));
 builder.Services.AddScoped<PlayerService>();
 builder.Services.AddScoped<MatchService>();
 builder.Services.AddScoped<PositionService>();
-//builder.Services.AddScoped<GameplayService>();
 
-// Lägg till CORS
+// Lägg till CORS med korrekt konfiguration för utveckling
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(builder =>
+    options.AddDefaultPolicy(corsBuilder =>
     {
-        builder.AllowAnyOrigin()
-               .AllowAnyMethod()
-               .AllowAnyHeader();
+        corsBuilder
+            .WithOrigins("http://localhost:3000", "https://localhost:3000") // Både HTTP och HTTPS
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials(); // Viktigt för JWT cookies
     });
 });
 
-// Lägg till TeamDatabaseService med UserDb connection
-builder.Services.AddSingleton<TeamDatabaseService>(sp => new TeamDatabaseService(userDbConnection));
+// Lägg till TeamDatabaseConnectionManager som singleton
+builder.Services.AddSingleton<TeamDatabaseConnectionManager>();
 
+// Lägg till TeamDatabaseService
+builder.Services.AddScoped<TeamDatabaseService>();
+
+Console.WriteLine("Building application...");
 var app = builder.Build();
 
+Console.WriteLine("Configuring middleware...");
 // Konfigurera HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
@@ -147,14 +201,61 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+// Lägg till global felhantering
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        
+        var error = context.Features.Get<IExceptionHandlerFeature>();
+        if (error != null)
+        {
+            Log.Error(error.Error, "Unhandled exception");
+            
+            await context.Response.WriteAsJsonAsync(new
+            {
+                StatusCode = 500,
+                Message = "Ett fel uppstod. Försök igen senare.",
+                RequestId = context.TraceIdentifier
+            });
+        }
+    });
+});
+
 app.UseHttpsRedirection();
-app.UseCors(); // Lägg till CORS middleware
+app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Lägg till TeamDatabaseMiddleware
-//app.UseMiddleware<TeamDatabaseMiddleware>();
+// Aktivera TeamDatabaseMiddleware
+app.UseMiddleware<TeamDatabaseMiddleware>();
 
 app.MapControllers();
 
+// Stäng databasanslutningar när applikationen avslutas
+var lifetime = app.Lifetime;
+lifetime.ApplicationStopping.Register(() =>
+{
+    Console.WriteLine("Stänger databasanslutningar...");
+    
+    // Stäng team-databaser
+    var teamConnectionManager = app.Services.GetRequiredService<TeamDatabaseConnectionManager>();
+    teamConnectionManager.Dispose();
+    Console.WriteLine("Team-databasanslutningar stängda.");
+    
+    if (userConnection.State != ConnectionState.Closed)
+    {
+        userConnection.Close();
+        Console.WriteLine("Användardatabasanslutning stängd.");
+    }
+    if (coachAppConnection.State != ConnectionState.Closed)
+    {
+        coachAppConnection.Close();
+        Console.WriteLine("Coach-app databasanslutning stängd.");
+    }
+});
+
+Console.WriteLine("Starting web server...");
 app.Run(); 

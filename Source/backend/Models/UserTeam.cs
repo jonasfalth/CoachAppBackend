@@ -9,4 +9,7 @@ public class UserTeam
     public Team Team { get; set; } = null!;
 
     public DateTime CreatedAt { get; set; }
+
+    public string Role { get; set; } = string.Empty;
+    public DateTime JoinedAt { get; set; }
 } 

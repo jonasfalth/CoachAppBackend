@@ -10,6 +10,7 @@ public class UserRepository : BaseRepository
 
     public async Task<List<User>> GetAllUsersAsync()
     {
+        EnsureConnectionOpen();
         var users = new List<User>();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
@@ -36,6 +37,7 @@ public class UserRepository : BaseRepository
 
     public async Task<User?> GetUserByIdAsync(int id)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = "SELECT Id, Username, Email, LastLogin, LastUpdated, CreatedAt FROM Users WHERE Id = @Id";
@@ -62,6 +64,7 @@ public class UserRepository : BaseRepository
 
     public async Task<User?> GetUserByUsernameAsync(string username)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = "SELECT Id, Username, Email, PasswordHash, LastLogin, LastUpdated, CreatedAt FROM Users WHERE Username = @Username";
@@ -89,6 +92,7 @@ public class UserRepository : BaseRepository
 
     public async Task<User> CreateUserAsync(User user)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -110,6 +114,7 @@ public class UserRepository : BaseRepository
 
     public async Task<User> UpdateUserAsync(User user)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -131,6 +136,7 @@ public class UserRepository : BaseRepository
 
     public async Task UpdateUserPasswordAsync(int userId, string passwordHash)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -149,6 +155,7 @@ public class UserRepository : BaseRepository
 
     public async Task UpdateLastLoginAsync(int userId)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = @"
@@ -165,6 +172,7 @@ public class UserRepository : BaseRepository
 
     public async Task DeleteUserAsync(int id)
     {
+        EnsureConnectionOpen();
         using (var command = (SqliteCommand)_connection.CreateCommand())
         {
             command.CommandText = "DELETE FROM Users WHERE Id = @Id";

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using CoachBackend.Models;
 using CoachBackend.Services;
+using CoachBackend.Repositories;
+using System.Data;
 
 namespace CoachBackend.Controllers;
 
@@ -11,24 +13,49 @@ namespace CoachBackend.Controllers;
 [Route("api/[controller]")]
 public class PlayersController : ControllerBase
 {
-    private readonly PlayerService _playerService;
+    private readonly ILogger<PlayersController> _logger;
 
-    public PlayersController(PlayerService playerService)
+    public PlayersController(ILogger<PlayersController> logger)
     {
-        _playerService = playerService;
+        _logger = logger;
+    }
+
+    private PlayerService GetPlayerService()
+    {
+        // Hämta team-specifik databasanslutning från middleware
+        var teamConnection = HttpContext.Items["TeamDatabaseConnection"] as IDbConnection;
+        
+        if (teamConnection == null)
+        {
+            _logger.LogWarning("Team-databasanslutning hittades inte, använder global anslutning");
+            // Fallback till global anslutning
+            var globalConnection = HttpContext.RequestServices.GetRequiredService<IDbConnection>();
+            var globalPlayerRepo = new PlayerRepository(globalConnection);
+            var globalPositionRepo = new PositionRepository(globalConnection);
+            return new PlayerService(globalPlayerRepo, globalPositionRepo);
+        }
+
+        // Använd team-specifik anslutning
+        var playerRepository = new PlayerRepository(teamConnection);
+        var positionRepository = new PositionRepository(teamConnection);
+        return new PlayerService(playerRepository, positionRepository);
     }
 
     [HttpGet]
     public async Task<ActionResult<List<Player>>> GetAllPlayers()
     {
-        var players = await _playerService.GetAllPlayersAsync();
+        var playerService = GetPlayerService();
+        var players = await playerService.GetAllPlayersAsync();
+        
+        _logger.LogInformation("Hämtade {Count} spelare från team-databas", players.Count);
         return Ok(players);
     }
 
     [HttpGet("{id}")]
     public async Task<ActionResult<Player>> GetPlayerById(int id)
     {
-        var player = await _playerService.GetPlayerByIdAsync(id);
+        var playerService = GetPlayerService();
+        var player = await playerService.GetPlayerByIdAsync(id);
         if (player == null)
         {
             return NotFound();
@@ -41,7 +68,10 @@ public class PlayersController : ControllerBase
     {
         try
         {
-            var createdPlayer = await _playerService.CreatePlayerAsync(player);
+            var playerService = GetPlayerService();
+            var createdPlayer = await playerService.CreatePlayerAsync(player);
+            
+            _logger.LogInformation("Skapade spelare {Name} i team-databas", createdPlayer.Name);
             return CreatedAtAction(nameof(GetPlayerById), new { id = createdPlayer.Id }, createdPlayer);
         }
         catch (ArgumentException ex)
@@ -60,7 +90,10 @@ public class PlayersController : ControllerBase
 
         try
         {
-            var updatedPlayer = await _playerService.UpdatePlayerAsync(player);
+            var playerService = GetPlayerService();
+            var updatedPlayer = await playerService.UpdatePlayerAsync(player);
+            
+            _logger.LogInformation("Uppdaterade spelare {Name} i team-databas", updatedPlayer.Name);
             return Ok(updatedPlayer);
         }
         catch (ArgumentException ex)
@@ -72,7 +105,10 @@ public class PlayersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeletePlayer(int id)
     {
-        await _playerService.DeletePlayerAsync(id);
+        var playerService = GetPlayerService();
+        await playerService.DeletePlayerAsync(id);
+        
+        _logger.LogInformation("Tog bort spelare med ID {Id} från team-databas", id);
         return NoContent();
     }
 } 

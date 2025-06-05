@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using CoachBackend.Models;
 using CoachBackend.Services;
 using CoachBackend.Authentication;
+using BCrypt.Net;
 
 namespace CoachBackend.Controllers;
 
