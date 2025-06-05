@@ -1,7 +1,0 @@
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.csproj.AssemblyReference.cache
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.AssemblyInfoInputs.cache
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.AssemblyInfo.cs
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.csproj.CoreCompileInputs.cache
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.MvcApplicationPartsAssemblyInfo.cs
-C:\Users\Jonas\Documents\Cursor-test-projects\coach-backend\backend\obj\Debug\net8.0\coach-backend.MvcApplicationPartsAssemblyInfo.cache
