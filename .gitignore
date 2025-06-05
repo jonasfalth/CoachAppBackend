@@ -56,3 +56,6 @@ project.fragment.lock.json
 artifacts/
 *.nuget.props
 *.nuget.targets
+
+# Logs
+/Source/backend/Logs/*
