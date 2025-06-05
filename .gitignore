@@ -1,5 +1,3 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
 /node_modules
 /.pnp
@@ -21,3 +19,40 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+## .NET / C# ##
+**/[Bb]in/
+**/[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.vsp
+*.pdb
+*.cache
+*.log
+*.dbmdl
+*.bak
+*.vspscc
+*.vssscc
+*.ncb
+*.ide
+*.sdf
+*.opensdf
+*.VC.db
+
+# Rider / ReSharper / Visual Studio for Mac
+.idea/
+.vscode/
+.vs/
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.nuget.props
+*.nuget.targets
