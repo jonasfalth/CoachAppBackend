@@ -3,4 +3,4 @@ steps:
     label: "Setup"
     key: "Setup"
     agents:
-      queue: bs02-bash
+      queue: default
