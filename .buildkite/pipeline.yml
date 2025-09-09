@@ -1,0 +1,6 @@
+steps:
+  - command: ./deploy.sh setup
+    label: "Setup"
+    key: "Setup"
+    agents:
+      queue: bs02-bash
