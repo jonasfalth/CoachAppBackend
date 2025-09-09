@@ -1,5 +1,5 @@
 steps:
-  - command: ./deploy.sh setup
+  - command: "C:\\Program Files\\Git\\bin\\bash.exe -lc './deploy.sh setup'"
     label: "Setup"
     key: "Setup"
     agents:
