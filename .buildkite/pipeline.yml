@@ -1,6 +1,6 @@
 steps:
-  - command: ./deploy.sh setup
-    label: "Setup"
+  - label: "Setup"
     key: "Setup"
+    command: '"C:\\Program Files\\Git\\bin\\bash.exe" -lc "./deploy.sh setup"'
     agents:
       queue: default

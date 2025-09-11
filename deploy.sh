@@ -6,7 +6,7 @@ export LOG_FORMAT='[testcompany] <color_start><level_short><color_end>[<ts_since
 export LOG_LEVEL="INFO"
 
 # shellcheck source=/dev/null
-source ./Scripts/log.sh
+# source ./Scripts/log.sh
 export VERBOSE=${VERBOSE:-false}
 export SPT_DEBUG=${SPT_DEBUG:-false}
 
