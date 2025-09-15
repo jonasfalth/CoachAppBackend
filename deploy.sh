@@ -16,7 +16,7 @@ if [[ ${SPT_DEBUG} == true ]]; then
 fi
 
 declare -r product='Testproduct'
-declare -r version='1.0.133'
+declare -r version='0.0.133'
 declare -r company="Testcompany"
 declare -r copyright="${company:?} 2022 - $(date +"%Y")"
 
@@ -59,6 +59,25 @@ setup() {
   startTime=$(date +%s)
 
   print_execution_time "${startTime:?}" "SETUP"
+
+  # Handle codeartifact authentication
+  aws codeartifact login --tool nuget --domain coachapplication --repository CoachApp --domain-owner 663797381593 --region eu-north-1
+  Write-Host "PackageVersion = $version"
+
+  # 2.3 Restore, build, pack (Release)
+  cd ./source/backend
+  dotnet restore
+  dotnet build -c Release /p:ContinuousIntegrationBuild=true
+
+  # Packa
+  dotnet pack .\coach-backend.csproj -c Release -o .\artifacts /p:PackageVersion=$version
+
+  # Pusha .nupkg (snupkg är frivilligt – pusha om du vill ha symboler)
+  $sourceName = "coachapplication/CoachApp"
+
+  Get-ChildItem .\artifacts\*.nupkg | ForEach-Object {
+    dotnet nuget push $_.FullName --source $sourceName --skip-duplicate
+  }
 }
 
 
