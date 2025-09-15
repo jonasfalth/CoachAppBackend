@@ -8,7 +8,7 @@ export LOG_LEVEL="INFO"
 # shellcheck source=/dev/null
 # source ./Scripts/log.sh
 export VERBOSE=${VERBOSE:-false}
-export SPT_DEBUG=${SPT_DEBUG:-true}
+export SPT_DEBUG=${SPT_DEBUG:-false}
 
 if [[ ${SPT_DEBUG} == true ]]; then
   set -x                   # Enables debug for bash script
@@ -16,7 +16,7 @@ if [[ ${SPT_DEBUG} == true ]]; then
 fi
 
 declare -r product='Testproduct'
-declare -r version='0.0.135'
+declare -r version='0.0.136'
 declare -r company="Testcompany"
 declare -r copyright="${company:?} 2022 - $(date +"%Y")"
 
