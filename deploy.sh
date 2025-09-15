@@ -7,7 +7,7 @@ export LOG_LEVEL="INFO"
 
 # shellcheck source=/dev/null
 # source ./Scripts/log.sh
-export VERBOSE=${VERBOSE:-true}
+export VERBOSE=${VERBOSE:-false}
 export SPT_DEBUG=${SPT_DEBUG:-true}
 
 if [[ ${SPT_DEBUG} == true ]]; then
