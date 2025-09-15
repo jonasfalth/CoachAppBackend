@@ -7,8 +7,8 @@ export LOG_LEVEL="INFO"
 
 # shellcheck source=/dev/null
 # source ./Scripts/log.sh
-export VERBOSE=${VERBOSE:-false}
-export SPT_DEBUG=${SPT_DEBUG:-false}
+export VERBOSE=${VERBOSE:-true}
+export SPT_DEBUG=${SPT_DEBUG:-true}
 
 if [[ ${SPT_DEBUG} == true ]]; then
   set -x                   # Enables debug for bash script
@@ -16,7 +16,7 @@ if [[ ${SPT_DEBUG} == true ]]; then
 fi
 
 declare -r product='Testproduct'
-declare -r version='0.0.133'
+declare -r version='0.0.134'
 declare -r company="Testcompany"
 declare -r copyright="${company:?} 2022 - $(date +"%Y")"
 
@@ -67,10 +67,10 @@ setup() {
   # 2.3 Restore, build, pack (Release)
   cd ./source/backend
   dotnet restore
-  dotnet build -c Release /p:ContinuousIntegrationBuild=true
+  dotnet build -c Release -p:ContinuousIntegrationBuild=true
     
   # Packa
-  dotnet pack ./coach-backend.csproj -c Release -o ./artifacts /p:PackageVersion="$version"
+  dotnet pack ./coach-backend.csproj -c Release -o ./artifacts -p:PackageVersion="$version"
     
   # Pusha .nupkg (snupkg är frivilligt – pusha om du vill ha symboler)
   sourceName="coachapplication/CoachApp"
@@ -89,4 +89,27 @@ function print_task() {
   echo_color "cyan" "----------------------------------------------------------------------"
   echo_color "cyan" "Executing task: ${1:?}"
   echo_color "cyan" "----------------------------------------------------------------------"
+}
+
+function echo_color() {
+  local color=${1:?'A color is required'}
+  local colorCode="0;30" #Black is default if no match
+  local noColor="\\033[0m"
+  shift
+  local textToColorize="$*"
+  case "${color}" in
+  "red") colorCode="\\033[0;31m" ;;
+  "green") colorCode="\\033[0;32m" ;;
+  "yellow") colorCode="\\033[0;33m" ;;
+  "blue") colorCode="\\033[0;34m" ;;
+  "purple") colorCode="\\033[0;35m" ;;
+  "cyan") colorCode="\\033[0;36m" ;;
+  esac
+  echo -e "${noColor}${colorCode}${textToColorize}${noColor}"
+}
+
+function print_execution_time() {
+  local startTime="${1:?'A start time is required'}"
+  local name="${2:-}"
+  echo_color "purple" "\nExecution time on '${name}': $(date -u --date @$(($(date +%s) - startTime)) +%M:%S)\r"
 }
