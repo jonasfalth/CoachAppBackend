@@ -59,7 +59,6 @@ setup() {
   
   # Handle codeartifact authentication
   aws codeartifact login --tool nuget --domain coachapplication --repository CoachApp --domain-owner 663797381593 --region eu-north-1
-  Write-Host "PackageVersion = ${version}"
   
   # 2.3 Restore, build, pack (Release)
   cd ./source/backend
