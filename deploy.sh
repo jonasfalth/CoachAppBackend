@@ -16,7 +16,7 @@ if [[ ${SPT_DEBUG} == true ]]; then
 fi
 
 declare -r product='Testproduct'
-declare -r version='0.0.134'
+declare -r version='0.0.135'
 declare -r company="Testcompany"
 declare -r copyright="${company:?} 2022 - $(date +"%Y")"
 
@@ -56,12 +56,13 @@ setup() {
   startTime=$(date +%s)
   
   print_execution_time "${startTime:?}" "SETUP"
+
+  # 2.3 Restore, build, pack (Release)
+  cd ./source/backend
   
   # Handle codeartifact authentication
   aws codeartifact login --tool nuget --domain coachapplication --repository CoachApp --domain-owner 663797381593 --region eu-north-1
-  
-  # 2.3 Restore, build, pack (Release)
-  cd ./source/backend
+
   dotnet restore
   dotnet build -c Release -p:ContinuousIntegrationBuild=true
     
