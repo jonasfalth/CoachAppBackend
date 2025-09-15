@@ -37,51 +37,44 @@ declare buildVersion
 declare buildLabel
 declare deployTo='Local'
 
-init() {
-  print_task "INIT"
+print_task "INIT"
 
-  echo_color "yellow" "Product        : ${product:?}"
-  echo_color "yellow" "Version        : ${version:?}"
-  echo_color "yellow" "Build number   : ${buildNumber:-}"
-  echo_color "yellow" "Build version  : ${buildVersion:?}"
-  echo_color "yellow" "Build label    : ${buildLabel:?}"
-  echo_color "yellow" "Branch         : ${branch:?}"
-  echo_color "yellow" "Deploy to      : ${deployTo:?}"
-}
+echo_color "yellow" "Product        : ${product:?}"
+echo_color "yellow" "Version        : ${version:?}"
+echo_color "yellow" "Build number   : ${buildNumber:-}"
+echo_color "yellow" "Build version  : ${buildVersion:?}"
+echo_color "yellow" "Build label    : ${buildLabel:?}"
+echo_color "yellow" "Branch         : ${branch:?}"
+echo_color "yellow" "Deploy to      : ${deployTo:?}"
 
-setup() {
-  #depends on
-  init
 
-  print_task 'SETUP'
+print_task 'SETUP'
 
-  local startTime
-  startTime=$(date +%s)
+local startTime
+startTime=$(date +%s)
 
-  print_execution_time "${startTime:?}" "SETUP"
+print_execution_time "${startTime:?}" "SETUP"
 
-  # Handle codeartifact authentication
-  aws codeartifact login --tool nuget --domain coachapplication --repository CoachApp --domain-owner 663797381593 --region eu-north-1
-  Write-Host "PackageVersion = ${$version}"
+# Handle codeartifact authentication
+aws codeartifact login --tool nuget --domain coachapplication --repository CoachApp --domain-owner 663797381593 --region eu-north-1
+Write-Host "PackageVersion = ${$version}"
 
-  # 2.3 Restore, build, pack (Release)
-  cd ./source/backend
-  dotnet restore
-  dotnet build -c Release -p:ContinuousIntegrationBuild=true
-    
-  # Packa
-  dotnet pack ./coach-backend.csproj -c Release -o ./artifacts -p:PackageVersion="$version"
-    
-  # Pusha .nupkg (snupkg är frivilligt – pusha om du vill ha symboler)
-  sourceName="coachapplication/CoachApp"
+# 2.3 Restore, build, pack (Release)
+cd ./source/backend
+dotnet restore
+dotnet build -c Release -p:ContinuousIntegrationBuild=true
+  
+# Packa
+dotnet pack ./coach-backend.csproj -c Release -o ./artifacts -p:PackageVersion="$version"
+  
+# Pusha .nupkg (snupkg är frivilligt – pusha om du vill ha symboler)
+sourceName="coachapplication/CoachApp"
 
-  # Om inga filer matchar, skippa loopen i stället för att använda bokstavlig sträng
-  shopt -s nullglob
-  for pkg in ./artifacts/*.nupkg; do
-    dotnet nuget push "$pkg" --source "$sourceName" --skip-duplicate
-  done
-
-}
+# Om inga filer matchar, skippa loopen i stället för att använda bokstavlig sträng
+shopt -s nullglob
+for pkg in ./artifacts/*.nupkg; do
+  dotnet nuget push "$pkg" --source "$sourceName" --skip-duplicate
+done
 
 
 function print_task() {
